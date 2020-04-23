@@ -1,0 +1,6 @@
+---
+# defaults file for openshift-ipsec
+ipsec_certs_dir: /etc/ipsec.d/certs
+ipsec_configuration: opportunistic
+pkcs_friendly_name: woody
+default_interface: "{{ hostvars[inventory_hostname]['ansible_default_ipv4']['address'] }}"

@@ -1,0 +1,22 @@
+- name: Get InstanceID metadata
+  uri:
+    url: http://169.254.169.254/latest/meta-data/instance-id
+    return_content: yes
+  register: instance_id
+  tags: ipsec
+
+- name: Copy IPSecStats cron job
+  vars:
+    INSTANCE_ID: "{{ instance_id.content }}"
+  template:
+    src: cronIPSecStats.sh.j2
+    dest: /usr/local/sbin/cronIPSecStats.sh
+    mode: '0755'
+  tags: ipsec
+
+- name: Ensure that cronIPSecStats.sh runs every 5 minutes
+  cron:
+    name: IPSec Stats
+    minute: "*/5"
+    job: "/usr/local/sbin/cronIPSecStats.sh"
+  tags: ipsec

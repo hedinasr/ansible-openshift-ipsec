@@ -1,0 +1,33 @@
+# This template contains the Opportunistic IPSEC configuration. It is set from 
+# this OKP node's to every other OKP node as part of a group (private policy),
+# which will hold packages and drop them if negotiation fails.
+
+conn private
+    # OKD Node (Self)
+    left=%defaultroute
+    leftid=%fromcert
+    leftcert="{{ pkcs_friendly_name }}"
+    # OKD Host (Other)
+    right=%opportunisticgroup
+    rightid=%fromcert
+    rightca=%same
+    rightrsasigkey=%cert
+    # Options
+    authby=rsasig
+    ikev2=insist
+    failureshunt=drop
+    negotiationshunt=hold
+    auto=ondemand
+    keyingtries=1
+    retransmit-timeout=2s
+    encapsulation=yes
+    type=tunnel
+
+# Everything else outside the IP Network will be set as passthrough
+conn clear
+    left=%defaultroute
+    right=%group
+    authby=never
+    type=passthrough
+    auto=route
+    priority=100

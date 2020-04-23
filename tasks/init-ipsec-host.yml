@@ -1,0 +1,55 @@
+- name: Check if ipsec database is initialized
+  stat:
+    path: /etc/ipsec.d/key4.db
+  register: check_ipsec_db_init
+  tags: ipsec
+
+- name: Initialize ipsec database
+  command: ipsec initnss
+  when: not check_ipsec_db_init.stat.exists
+  tags: ipsec
+
+# TODO make this idempotent
+- name: Import host cert into ipsec database
+  expect:
+    command: ipsec import {{ ipsec_certs_dir }}/{{ inventory_hostname }}.p12
+    responses:
+      'Enter password for PKCS12 file:': ''
+  register: ipsec_import_host
+  tags: ipsec
+
+- name: Check that the cert has been correctly imported
+  command: certutil -d sql:/etc/ipsec.d -L
+  register: certutil
+  tags: ipsec
+
+- assert:
+    that: "'{{ pkcs_friendly_name }}' in certutil.stdout"
+  tags: ipsec
+
+- name: Create IPSec cluster configuration - Opportunistic
+  template:
+    src: openshift-cluster-opportunistic.conf.j2
+    dest: /etc/ipsec.d/openshift-cluster.conf
+  when: "'opportunistic' in ipsec_configuration"
+  register: ipsec_cluster_conf
+  tags: ipsec
+
+- name: Create main IPSec file at /etc/ipsec.conf
+  copy:
+    dest: "/etc/ipsec.conf"
+    force: yes
+    content: |
+      config setup
+         logfile=/var/log/pluto.log
+         xfrmlifetime=60
+
+      include /etc/ipsec.d/*.conf
+  tags: ipsec
+
+- name: Restart IPSec service
+  service:
+    name: ipsec
+    state: restarted
+  when: ipsec_import_host.changed or ipsec_cluster_conf.changed
+  tags: ipsec

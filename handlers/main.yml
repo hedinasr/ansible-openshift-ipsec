@@ -1,0 +1,11 @@
+---
+# handlers file for openshift-ipsec
+- name: restart ipsec
+  service:
+    name: ipsec
+    state: restarted
+
+- name: remove CA private key
+  file:
+    path: "{{ ipsec_certs_dir }}/ca.key"
+    state: absent

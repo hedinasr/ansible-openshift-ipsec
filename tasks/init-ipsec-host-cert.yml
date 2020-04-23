@@ -1,0 +1,67 @@
+- name: Create {{ ipsec_certs_dir }} directory
+  file:
+    path: "{{ ipsec_certs_dir }}"
+    state: directory
+  tags: ipsec
+
+- when: inventory_hostname == groups['masters'][0]
+  block:
+    - slurp:
+        src: /etc/origin/master/ca.key
+      register: ca_key
+    - set_fact:
+        ca_key: "{{ ca_key['content'] | b64decode }}"
+  tags: ipsec
+
+- name: Generate private key
+  openssl_privatekey:
+    path: "{{ ipsec_certs_dir }}/{{ inventory_hostname }}.key"
+    type: RSA
+    size: 4096
+    mode: '0400'
+  tags: ipsec
+
+- name: Generate CSR
+  openssl_csr:
+    path: "{{ ipsec_certs_dir }}/{{ inventory_hostname }}.csr"
+    privatekey_path: "{{ ipsec_certs_dir }}/{{ inventory_hostname }}.key"
+    common_name: "{{ inventory_hostname }}"
+    organization_name: TLS
+    digest: sha256
+  tags: ipsec
+
+- name: Create CA private key
+  copy:
+    dest: "{{ ipsec_certs_dir }}/ca.key"
+    force: yes
+    mode: '0400'
+    content: |
+      {{ hostvars[groups['masters'][0]]['ca_key'] }}
+  notify: remove CA private key
+  tags: ipsec
+
+- name: Generate certificate
+  openssl_certificate:
+    provider: ownca
+    path: "{{ ipsec_certs_dir }}/{{ inventory_hostname }}.crt"
+    privatekey_path: "{{ ipsec_certs_dir }}/{{ inventory_hostname }}.key"
+    csr_path: "{{ ipsec_certs_dir }}/{{ inventory_hostname }}.csr"
+    mode: '0400'
+    ownca_path: /etc/origin/node/client-ca.crt
+    ownca_privatekey_path: "{{ ipsec_certs_dir }}/ca.key"
+    signature_algorithms:
+      - sha256WithRSAEncryption
+  tags: ipsec
+
+- name: Generate PKCS#12
+  openssl_pkcs12:
+    action: export
+    path: "{{ ipsec_certs_dir }}/{{ inventory_hostname }}.p12"
+    mode: u=rw,g=,o=
+    friendly_name: "{{ pkcs_friendly_name }}"
+    privatekey_path: "{{ ipsec_certs_dir }}/{{ inventory_hostname }}.key"
+    certificate_path: "{{ ipsec_certs_dir }}/{{ inventory_hostname }}.crt"
+    other_certificates: /etc/origin/node/client-ca.crt
+    passphrase: ''
+    state: present
+  tags: ipsec

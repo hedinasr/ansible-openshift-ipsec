@@ -1,0 +1,25 @@
+- name: Allow ESP
+  iptables:
+    chain: OS_FIREWALL_ALLOW
+    in_interface: "{{ hostvars[inventory_hostname]['ansible_default_ipv4']['interface'] }}"
+    protocol: "50"
+    jump: ACCEPT
+  tags: ipsec
+
+- name: Allow UDP (port 500)
+  iptables:
+    chain: OS_FIREWALL_ALLOW
+    in_interface: "{{ hostvars[inventory_hostname]['ansible_default_ipv4']['interface'] }}"
+    protocol: udp
+    destination_port: "500"
+    jump: ACCEPT
+  tags: ipsec
+
+- name: Allow UDP (port 4500)
+  iptables:
+    chain: OS_FIREWALL_ALLOW
+    in_interface: "{{ hostvars[inventory_hostname]['ansible_default_ipv4']['interface'] }}"
+    protocol: udp
+    destination_port: "4500"
+    jump: ACCEPT
+  tags: ipsec

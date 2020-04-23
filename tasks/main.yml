@@ -1,0 +1,49 @@
+---
+- name: Add libreswan repository
+  yum:
+    name: https://download.libreswan.org/binaries/rhel/7/libreswan-release-7-1.noarch.rpm
+    state: present
+  tags: ipsec
+
+- name: Install libreswan
+  yum:
+    name: libreswan-3.31
+    state: present
+  tags: ipsec
+
+- name: Install pyOpenSSL
+  yum:
+    name: pyOpenSSL
+    state: present
+  tags: ipsec
+
+- name: Install pexpect
+  pip:
+    name: pexpect
+    umask: '0022'
+  tags: ipsec
+
+- name: Enable IPSec Daemon
+  service:
+    name: ipsec
+    state: started
+    enabled: yes
+  tags: ipsec
+
+# Configure firewall
+- import_tasks: iptables-setup.yml
+
+# Create IPSec hosts certificate
+- import_tasks: init-ipsec-host-cert.yml
+
+# Configure ipsec service on host
+- import_tasks: init-ipsec-host.yml
+
+# Create Connection policies
+- import_tasks: init-ipsec-host-connections.yml
+
+# Ping nodes to establish node-to-node tunnels and verify IPSec tunnels
+- import_tasks: ping-nodes.yml
+
+# Configure CloudWatch metrics
+- import_tasks: cloud-watch.yml
